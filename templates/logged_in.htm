@@ -1,0 +1,15 @@
+    <p>Logged in. <a href="{{ url_for('logout') }}">Logout</a></p>
+    <p><h3>Send message:</h3></p>
+    <form method="post" onsubmit="return send()" id="sendform">
+      <p>
+        Recipient: <input type="text" name="recipient" /><br />
+        Message:<br />
+        <textarea name="message"></textarea><br />
+        <input type="submit" name="submit" value="Send message" />
+      </p>
+    </form>
+    <p id="sendstatus"></p>
+    <a href="javascript:void(0)" onclick="getmessages()">Get messages</a>
+    <div id="messagelist">
+      <em>No new messages.</em>
+    </div>

@@ -1,0 +1,112 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"> 
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>{% block head_full %}
+    <title>{% block title_full %}BrowserID Chat{% endblock title_full %}</title>
+    <link rel="stylesheet" href="/static/css/screen.css" type="text/css" media="screen" />
+    <script type="text/javascript" src="https://browserid.org/include.js"></script>
+    <script type="text/javascript" src="/static/js/jquery-1.6.2.min.js"></script>
+    <meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
+    <meta name="keywords" content="browseridchat,browserid,chat,secure,im" />
+    <meta name="description" content="Secure chat using BrowserID" />
+    <script type="text/javascript">
+      
+      function post(path, params)
+      {
+        var form = document.createElement("form");
+        form.setAttribute("method", "post");
+        form.setAttribute("action", path);
+
+        for (var key in params)
+        {
+          var field = document.createElement("input");
+          field.setAttribute("type", "hidden");
+          field.setAttribute("name", key);
+          field.setAttribute("value", params[key]);
+
+          form.appendChild(field);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+      }
+      
+      function login()
+      {
+        navigator.id.getVerifiedEmail(function(assertion) {
+          if (assertion)
+            post("{{ url_for('login') }}", {assertion: assertion});
+          else
+          {
+            // TODO: Prettify this
+            alert("You were not logged in. Bummer.");
+          }
+        });
+      }
+      
+{% if 'email' in session %}      function send()
+      {
+        var form = document.getElementById('sendform');
+        
+        $.ajax({
+          type: "POST",
+          url: "{{ url_for('send') }}",
+          data: {recipient: form.recipient.value, message: form.message.value},
+          success: function (data)
+            {
+              var status = document.getElementById("sendstatus");
+              if (data == 'success')
+              {
+                status.innerHTML = 'Sent message successfully!';
+                form.reset();
+              }
+              else if (data == 'notloggedin')
+                status.innerHTML = 'Not logged in.';
+              else if (data == 'norecipientpubkeys')
+                status.innerHTML = 'Recipient has no public keys. How did you encrypt that message?';
+              else
+                status.innerHTML = 'Unknown error occurred.';
+            }
+        });
+          
+          return false;
+      }
+      
+      function getmessages()
+      {
+        $.getJSON("{{ url_for('getmessages') }}", null, function (data)
+          {
+            if (data["response"] == "failure")
+            {
+              alert("Get messages failed. Reason: " + data["reason"]);
+              return;
+            }
+            
+            var disp = document.getElementById("messagelist");
+            if (data["messages"].length == 0)
+            {
+              disp.innerHTML = '<em>No new messages</em>';
+              return;
+            }
+              
+            disp.innerHTML = '';
+            $.each(data["messages"], function (id, msg)
+              {
+                var elem = document.createElement("p");
+                elem.innerHTML = '<strong>' + msg[0] + '</strong>: ' + msg[1];
+                
+                disp.appendChild(elem);
+              });
+          });
+      }
+      
+      window.onload = function () { getmessages() };
+{% endif %}    </script>{% block head %}
+{% endblock head %}{% endblock head_full %}  </head>
+  <body>{% block body_full %}
+    <h1>BrowserID Chat</h1>
+    <h2>Simple, secure chat using BrowserID</h2>
+{% if 'email' not in session %}    <a href="javascript:void()" onclick="login()">
+      <img src="/static/img/sign_in.png" />
+    </a>{% else %}{% include "logged_in.htm" %}{% endif %}
+{% endblock body_full %}  </body>
+</html>
