@@ -29,7 +29,7 @@ app = Flask('browseridchat')
 db = redis.Redis('localhost')
 
 # Generate the secret key if it hasn't been already
-if db.get('secretkey') is None:
+if not db.exists('secretkey'):
   import os
   db.set('secretkey', os.urandom(36))
 app.secret_key = db.get('secretkey')
@@ -67,8 +67,6 @@ def login():
         for elem in xml:
           if elem.tag.endswith('Link') and elem.attrib['rel'] == 'public-key':
             db.sadd('user:%s:pubkeys' % email, elem.attrib['value'])
-        
-        db.set('user:%s:messages' % email, 0)
       
       session['email'] = email
       return redirect(url_for('index'))
@@ -79,10 +77,10 @@ def login():
 
 def add_message(recipient, sender, message):
   """Add the message from sender to recipient's message list"""
-  msg_id = db.incr('user:%s:messages' % recipient)
-  db.sadd('user:%s:unread' % recipient, msg_id)
-  db.set('user:%s:msg%d:content' % (recipient, msg_id), message)
-  db.set('user:%s:msg%d:sender' % (recipient, msg_id), sender)
+  db.sadd('user:%s:messages' % recipient, json.dumps({
+    'message': message,
+    'sender': sender
+  }))
 
 @app.route('/send/', methods=['POST'])
 def send():
@@ -108,11 +106,9 @@ def getmessages():
     return json.dumps(response)
   
   email = session['email']
-  messages = []
-  for msg_id in db.smembers('user:%s:unread' % email):
-    content = db.get('user:%s:msg%s:content' % (email, msg_id))
-    sender = db.get('user:%s:msg%s:sender' % (email, msg_id))
-    messages.append((sender, content))
+  for json_msg in db.smembers('user:%s' % email):
+    message = json.loads(message)
+    messages.append((message['sender'], message['message']))
   
   response['status'] = 'success'
   response['messages'] = messages
